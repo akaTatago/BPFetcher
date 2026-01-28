@@ -1,6 +1,5 @@
 requests
 beautifulsoup4
 pandas
-python-dotenv
 fake-useragent
 tqdm
