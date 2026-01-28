@@ -1,5 +1,5 @@
-requests
 beautifulsoup4
 pandas
-fake-useragent
 tqdm
+lxml
+curl_cffi
