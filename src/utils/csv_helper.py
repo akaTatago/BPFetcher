@@ -15,9 +15,10 @@ def load_books(file_path):
             col_name = 'ISBN13'
         else:
             print(f"ISBN13 column not found in {file_path}")
+            return []
         
         df[col_name] = df[col_name].fillna('').astype(str)
-        df['Identifier'] = df[col_name].str.replace('=', '').str.replace('"', '').str.strip()
+        df['Identifier'] = df[col_name].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
 
         books_list = df.to_dict('records')
         

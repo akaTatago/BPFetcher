@@ -19,30 +19,23 @@ def main():
     results = []
 
     for book in tqdm(books, desc="Processing", unit="book"):
-        
         identifier = book.get("Identifier")
-
         scraped_data = scrape_wook(identifier)
+        final_record = book.copy()
         
         if scraped_data:
-            final_record={
-                "ISBN13":identifier,
-                "Title":scraped_data["title_found"],
-                "Price":scraped_data["price"],
-                "On sale":scraped_data["on_sale"],
-                "Link":scraped_data["link"]
-            }
+            final_record["Title"] = scraped_data["title_found"]
+            final_record["Author"] = scraped_data["author_found"]
+            final_record["Wook Price"] = scraped_data["price"]
+            final_record["On Sale"] = "YES" if scraped_data["on_sale"] else "No"
+            final_record["Link"] = scraped_data["link"]
+            final_record["Status"] = "Found"
         else:
-            final_record={
-                "ISBN13":identifier,
-                "Title":"",
-                "Price":"",
-                "On sale":"",
-                "Link":""
-            }
+            final_record["Wook Price"] = 0.0
+            final_record["Status"] = "Not Found"
+            final_record["Link"] = ""
             
         results.append(final_record)
-
         time.sleep(random.uniform(2, 5))
 
     success = save_results(results, output_file)
