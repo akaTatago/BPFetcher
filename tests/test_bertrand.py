@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.scrapers.wook import scrape_wook
+from src.scrapers.bertrand import scrape_bertrand
 
 test_books = [
     "9789897731129",
@@ -17,7 +17,7 @@ test_books = [
 print("SCRAPING TEST")
 
 for book in test_books:
-    res = scrape_wook(book)
+    res = scrape_bertrand(book)
     
     if res:
         print(f"STATUS: {res['status']}")

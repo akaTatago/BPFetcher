@@ -3,6 +3,7 @@ import random
 from tqdm import tqdm
 from src.utils.csv_helper import load_books, save_results
 from src.scrapers.wook import scrape_wook
+from src.scrapers.bertrand import scrape_bertrand
 
 def main():
     print("\n--- BPFetcher ---")
@@ -20,23 +21,35 @@ def main():
 
     for book in tqdm(books, desc="Processing", unit="book"):
         identifier = book.get("Identifier")
-        scraped_data = scrape_wook(identifier)
+        wook_data = scrape_wook(identifier)
+        bertrand_data = scrape_bertrand(identifier)
         final_record = book.copy()
         
-        if scraped_data:
-            final_record["Title"] = scraped_data["title_found"]
-            final_record["Author"] = scraped_data["author_found"]
-            final_record["Wook Price"] = scraped_data["price"]
-            final_record["On Sale"] = "Yes" if scraped_data["on_sale"] else "No"
-            final_record["Link"] = scraped_data["link"]
-            final_record["Status"] = scraped_data["status"]
+        if wook_data:
+            final_record["Title"] = wook_data["title_found"]
+            final_record["Author"] = wook_data["author_found"]
+            final_record["Wook Status"] = wook_data["status"]
+            final_record["Wook Price"] = wook_data["price"]
+            final_record["Wook On Sale"] = "Yes" if wook_data["on_sale"] else "No"
+            final_record["Wook Link"] = wook_data["link"]
         else:
-            final_record["Title"] = ""
-            final_record["Author"] = ""
+            final_record["Wook Status"] = "Not found"
             final_record["Wook Price"] = 0.0
-            final_record["On Sale"] = "No"
-            final_record["Link"] = ""
-            final_record["Status"] = "Not found"
+            final_record["Wook On Sale"] = "No"
+            final_record["Wook Link"] = ""
+
+        if bertrand_data:
+            final_record["Title"] = bertrand_data["title_found"]
+            final_record["Author"] = bertrand_data["author_found"]
+            final_record["Bertrand Status"] = bertrand_data["status"]
+            final_record["Bertrand Price"] = bertrand_data["price"]
+            final_record["Bertrand On Sale"] = "Yes" if bertrand_data["on_sale"] else "No"
+            final_record["Bertrand Link"] = bertrand_data["link"]
+        else:
+            final_record["Bertrand Status"] = "Not found"
+            final_record["Bertrand Price"] = 0.0
+            final_record["Bertrand On Sale"] = "No"
+            final_record["Bertrand Link"] = ""
             
         results.append(final_record)
         time.sleep(random.uniform(2, 5))

@@ -23,7 +23,7 @@ def scrape_wook(isbn):
         #AUTHOR
         found_author=info.find("span", class_="authors").find("a").text
 
-        #PRICE
+        #PRICE AND STATUS
         price_area=info.find("div", class_="wook-container d-flex flex-column gap-20")
         available=price_area.find("div", id="product-price")
         if not available:
