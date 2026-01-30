@@ -4,8 +4,7 @@ import random
 import time
 
 def scrape_wook(isbn):
-    clean_isbn = str(isbn).replace("-", "").strip()
-    search_url = f"https://www.wook.pt/pesquisa?keyword={clean_isbn}"
+    search_url = f"https://www.wook.pt/pesquisa?keyword={isbn}"
 
     try:
         time.sleep(random.uniform(2, 5))
@@ -28,9 +27,11 @@ def scrape_wook(isbn):
         price_area=info.find("div", class_="wook-container d-flex flex-column gap-20")
         available=price_area.find("div", id="product-price")
         if not available:
+            status="Unavailable"
             price_clean=0.00
             on_sale=False
         else:
+            status="Available"
             price=price_area.find("span", class_="price text-black text-align-right").text
             price_clean = float(price.replace("€", "").replace(",", ".").strip())
             off_sale_price=price_area.find("s", class_="text-red text-align-right")
@@ -47,6 +48,7 @@ def scrape_wook(isbn):
             "author_found": found_author,
             "price": price_clean,
             "on_sale": on_sale,
+            "status":status,
             "link": full_link
         }
         
