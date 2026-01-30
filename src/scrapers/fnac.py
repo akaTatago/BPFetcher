@@ -19,39 +19,45 @@ def scrape_fnac(isbn):
         
         #TITLE
         title_area=info.find("p", class_="Article-desc")
-        title_tag=title_area.find("a", class_="Article-title")
-        found_title=title_tag.text
-
-        sub_title=title_area.text
-        if sub_title:
-            found_title = found_title + ": " + sub_title
+        found_title=title_area.get_text(separator=" ", strip=True)
 
         #AUTHOR
         author_area=info.find("p", class_="Article-descSub")
         found_author=author_area.find("a").text
 
         #PRICE AND STATUS
-        price_area=info.find("div", class_="bigPricerFA")
-
-        price=price_area.find("div", class_="blocPriceBorder--bgGrey").find("span", class_="price").text
-        on_sale=False
-        status="Available"
-
-        if not price:
-            price=price_area.find("strong", class_="userPrice").text
-
-            if not price:
-                price="0.00"
-                status="Unavailable"
-            else:
-                off_sale_price=price_area.find("del", class_="oldPrice").text
-                if off_sale_price:
-                    on_sale = True
+        price_area = info.find("div", class_="bigPricerFA")
         
-        price_clean = float(price.replace("€", "").replace(",", ".").strip())
+        price_clean = 0.00
+        on_sale = False
+        status = "Unavailable"
+
+        if price_area:
+            price_tag = price_area.find("strong", class_="userPrice")
+            
+            if not price_tag:
+                all_prices = price_area.find_all("span", class_="price")
+                
+                if len(all_prices) >= 1:
+                    price_tag = all_prices[len(all_prices)-1]
+                else:
+                    price_tag = None
+
+            if price_area.find("del", class_="oldPrice"):
+                on_sale = True
+
+            if price_tag:
+                price_text = price_tag.get_text(strip=True)
+                clean_text = price_text.replace("€", "").replace(",", ".").strip()
+                try:
+                    price_clean = float(clean_text)
+                    status = "Available"
+                except ValueError:
+                    price_clean = 0.00
+                    status = "Unavailable"
 
         #LINK
-        full_link = title_tag['href']
+        full_link = title_area.find("a")['href']
 
         return {
             "title_found": found_title,
@@ -63,5 +69,5 @@ def scrape_fnac(isbn):
         }
         
     except Exception as e:
-        print(f"Connection error: {e}")
+        print(f"Scraping error: {e}")
         return None
