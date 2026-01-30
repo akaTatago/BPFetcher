@@ -11,7 +11,8 @@ test_books = [
     "978-972-0-03306-2",
     "9789899287204",
     "56446464646464468",
-    "9781779527264"
+    "9781779527264",
+    "9781779528278"
 ]
 
 print("SCRAPING TEST")
@@ -28,5 +29,5 @@ for book in test_books:
         print(f"LINK: {res['link']}")
         print("-"*40)
     else:
-        print(f"BOOK {book} NOT FOUND")
+        print(f"BOOK {book} DATA NOT FOUND")
         print("-"*40)

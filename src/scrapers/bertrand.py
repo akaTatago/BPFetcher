@@ -56,5 +56,5 @@ def scrape_bertrand(isbn):
         }
         
     except Exception as e:
-        print(f"Connection error: {e}")
+        print(f"Scraping error: {e}")
         return None
