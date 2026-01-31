@@ -45,7 +45,7 @@ def scrape_wook(isbn):
     pages=0
     if info_table:
         table_rows = info_table.find_all("tr")
-        if len(table_rows) >= 8:
+        if len(table_rows) >= 8 and "Páginas:"==table_rows[7].find("td").text:
             pages=int(table_rows[7].find("td", class_="font-medium").text)
 
     return {
