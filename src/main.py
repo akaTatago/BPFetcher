@@ -6,6 +6,12 @@ from src.scrapers.wook import scrape_wook
 from src.scrapers.bertrand import scrape_bertrand
 from src.scrapers.fnac import scrape_fnac
 
+STORES = [
+    ("Wook", scrape_wook),
+    ("Bertrand", scrape_bertrand),
+    ("Fnac", scrape_fnac)
+]
+
 def main():
     print("\n--- BPFetcher ---")
     
@@ -22,49 +28,29 @@ def main():
 
     for book in tqdm(books, desc="Processing", unit="book"):
         identifier = book.get("Identifier")
-        wook_data = scrape_wook(identifier)
-        bertrand_data = scrape_bertrand(identifier)
-        fnac_data = scrape_fnac(identifier)
-        final_record = book.copy()
         
-        if wook_data:
-            final_record["Title"] = wook_data["title_found"]
-            final_record["Author"] = wook_data["author_found"]
-            final_record["Wook Status"] = wook_data["status"]
-            final_record["Wook Price"] = wook_data["price"]
-            final_record["Wook On Sale"] = "Yes" if wook_data["on_sale"] else "No"
-            final_record["Wook Link"] = wook_data["link"]
-        else:
-            final_record["Wook Status"] = "Not found"
-            final_record["Wook Price"] = 0.0
-            final_record["Wook On Sale"] = "No"
-            final_record["Wook Link"] = ""
+        final_record = book.copy()
+        final_record.setdefault("Pages", 0)
 
-        if bertrand_data:
-            final_record["Title"] = bertrand_data["title_found"]
-            final_record["Author"] = bertrand_data["author_found"]
-            final_record["Bertrand Status"] = bertrand_data["status"]
-            final_record["Bertrand Price"] = bertrand_data["price"]
-            final_record["Bertrand On Sale"] = "Yes" if bertrand_data["on_sale"] else "No"
-            final_record["Bertrand Link"] = bertrand_data["link"]
-        else:
-            final_record["Bertrand Status"] = "Not found"
-            final_record["Bertrand Price"] = 0.0
-            final_record["Bertrand On Sale"] = "No"
-            final_record["Bertrand Link"] = ""
+        for store_name, scraper_func in STORES:
+            data = scraper_func(identifier)
+            
+            if data:
+                final_record["Title"] = data.get("title_found", final_record.get("Title"))
+                final_record["Author"] = data.get("author_found", final_record.get("Author"))
+                
+                if "pages" in data:
+                    final_record["Pages"] = data["pages"]
 
-        if fnac_data:
-            final_record["Title"] = fnac_data["title_found"]
-            final_record["Author"] = fnac_data["author_found"]
-            final_record["Fnac Status"] = fnac_data["status"]
-            final_record["Fnac Price"] = fnac_data["price"]
-            final_record["Fnac On Sale"] = "Yes" if fnac_data["on_sale"] else "No"
-            final_record["Fnac Link"] = fnac_data["link"]
-        else:
-            final_record["Fnac Status"] = "Not found"
-            final_record["Fnac Price"] = 0.0
-            final_record["Fnac On Sale"] = "No"
-            final_record["Fnac Link"] = ""
+                final_record[f"{store_name} Status"] = data.get("status", "Available")
+                final_record[f"{store_name} Price"] = data.get("price", 0.0)
+                final_record[f"{store_name} On Sale"] = "Yes" if data.get("on_sale") else "No"
+                final_record[f"{store_name} Link"] = data.get("link", "")
+            else:
+                final_record[f"{store_name} Status"] = "Not found"
+                final_record[f"{store_name} Price"] = 0.0
+                final_record[f"{store_name} On Sale"] = "No"
+                final_record[f"{store_name} Link"] = ""
             
         results.append(final_record)
         time.sleep(random.uniform(2, 5))
