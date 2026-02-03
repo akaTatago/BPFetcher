@@ -2,7 +2,10 @@ from src.utils.scraping_helper import get_soup, clean_text, clean_price
 import urllib.parse
 
 def scrape_wook(isbn):
-    search_url = f"https://www.wook.pt/pesquisa?keyword={isbn}"
+    if not isinstance(isbn, str):
+        search_url = f"https://www.wook.pt/pesquisa?keyword={isbn}"
+    else:
+        search_url = isbn
 
     soup, final_url = get_soup(search_url)
 
@@ -61,15 +64,20 @@ def scrape_wook(isbn):
 
 def search_wook_by_text(title, author):
 
-    search_url = f"https://www.wook.pt/pesquisa?keyword={urllib.parse(title.lower().replace(' ', '+'))}"
+    search_url = f"https://www.wook.pt/pesquisa?keyword={urllib.parse.quote(title.lower().replace(' ', '+'))}"
+    print(f"searching {search_url}")
 
-    soup, _ = get_soup(search_url)
+    soup, response_link = get_soup(search_url)
     if not soup: return []
 
     results = []
     
     products = soup.find_all("li", class_="product d-flex")
-
+    if not products:
+        match = scrape_wook(response_link)
+        if match:
+            results.append(match)
+        return results
 
     unmatches=0
     for prod in products:
@@ -107,12 +115,14 @@ def search_wook_by_text(title, author):
 
             results.append({
                 "Store": "Wook",
-                "Found Title": found_title,
-                "Found Author": found_author,
-                "Price": final_price,
-                "On Sale": on_sale,
-                "Status": status,
-                "Link": link
+                "title_found": found_title,
+                "author_found": found_author,
+                "price": final_price,
+                "on_sale": on_sale,
+                "status": status,
+                "link": link
             })
+        else:
+            unmatches +=1
 
     return results
