@@ -1,4 +1,5 @@
 from src.utils.scraping_helper import get_soup, clean_text, clean_price
+import urllib.parse
 
 def scrape_wook(isbn):
     search_url = f"https://www.wook.pt/pesquisa?keyword={isbn}"
@@ -57,3 +58,61 @@ def scrape_wook(isbn):
         "status":status,
         "link": full_link
     }
+
+def search_wook_by_text(title, author):
+
+    search_url = f"https://www.wook.pt/pesquisa?keyword={urllib.parse(title.lower().replace(' ', '+'))}"
+
+    soup, _ = get_soup(search_url)
+    if not soup: return []
+
+    results = []
+    
+    products = soup.find_all("li", class_="product d-flex")
+
+
+    unmatches=0
+    for prod in products:
+        if unmatches == 5:
+            break
+
+        title_area=prod.find("div", class_="title")
+        title_elem = title_area.find("span", class_="font-bold")
+        author_elem = prod.find("div", class_="authors").find("a", class_="text-black")
+        
+        if not title_elem or not author_elem:
+            unmatches+=1
+            continue
+
+        found_title = clean_text(title_elem)
+        found_author = clean_text(author_elem) if author_elem else ""
+
+        if ((title.lower().strip() in found_title.lower() or found_title.lower() in title.lower().strip())  and 
+            author.lower().strip() in found_author.lower()):
+            
+            price_area=prod.find("span", class_="pvp")
+            
+            final_price = 0.0
+            on_sale = False
+            
+            if price_area:
+                final_price = clean_price(price_area.find("span", class_="font-bold"))
+
+                if price_area.find("s", class_="text-red text-align-right"):
+                    on_sale=True
+                
+            
+            status = "Available" if final_price > 0 else "Unavailable"
+            link = "https://www.wook.pt" + title_area.find("a")['href']
+
+            results.append({
+                "Store": "Wook",
+                "Found Title": found_title,
+                "Found Author": found_author,
+                "Price": final_price,
+                "On Sale": on_sale,
+                "Status": status,
+                "Link": link
+            })
+
+    return results

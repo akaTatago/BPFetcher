@@ -3,26 +3,34 @@ import os
 import sys
 
 
-def load_books(file_path):
+def load_books(file_path, mode='isbn'):
     if not os.path.exists(file_path):
         print(f"Error: {file_path} not found.")
         return []
 
     try:
         df = pd.read_csv(file_path, dtype=str)
-        
-        if 'ISBN13' in df.columns:
-            col_name = 'ISBN13'
-        else:
-            print(f"ISBN13 column not found in {file_path}")
-            return []
-        
-        df[col_name] = df[col_name].fillna('').astype(str)
-        df['Identifier'] = df[col_name].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
 
-        books_list = df.to_dict('records')
+        books_list = []
         
-        books_list = [b for b in books_list if b.get('Identifier')]
+        if mode == 'isbn':
+            if 'ISBN13' not in df.columns:
+                print(f"ISBN13 column not found in {file_path}")
+                return []
+            
+            df['ISBN13'] = df['ISBN13'].fillna('').astype(str)
+            df['Identifier'] = df['ISBN13'].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
+            books_list = df.to_dict('records')
+            books_list = [b for b in books_list if b.get('Identifier')]
+
+        elif mode == 'text':
+            required = ['Title', 'Author']
+            if not all(col in df.columns for col in required):
+                print(f"Columns 'Title' and 'Author' not found in {file_path}")
+                return []
+            
+            df = df.dropna(subset=['Title', 'Author'])
+            books_list = df.to_dict('records')
 
         return books_list
 
