@@ -80,7 +80,7 @@ def search_wook_by_text(title, author):
 
     unmatches=0
     for prod in products:
-        if unmatches == 10:
+        if unmatches >= 10:
             break
 
         title_area=prod.find("div", class_="title")

@@ -19,6 +19,9 @@ def clean_text(element):
 
 def normalize(text):
     if text:
+        if text.rfind(' -') != -1:
+            text=text[:text.rfind(' -')]
+
         return text.replace(':', '').strip().lower()
 
 def clean_price(element_or_text):

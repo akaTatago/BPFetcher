@@ -53,8 +53,6 @@ def scrape_bertrand(isbn):
 def search_bertrand_by_text(title, author):
     search_url = f"https://www.bertrand.pt/pesquisa/{urllib.parse.quote(title.lower().replace(' ', '+'))}"
 
-    print(f"SEARCH_LINK: {search_url}")
-
     soup, final_url = get_soup(search_url)
     if not soup:
         return []
@@ -64,7 +62,7 @@ def search_bertrand_by_text(title, author):
 
     unmatches = 0
     for prod in products:
-        if unmatches==10:
+        if unmatches>=10:
             break
 
         title_elem=prod.find("a", class_="title-lnk track")
@@ -103,7 +101,7 @@ def search_bertrand_by_text(title, author):
             res.append({
                 "Store": "Bertrand",
                 "title_found": found_title,
-                "author_found": found_author,
+                "author_found": found_author.strip(),
                 "price": price_clean,
                 "on_sale": on_sale,
                 "status": status,
