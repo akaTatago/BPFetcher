@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.scrapers.bertrand import search_bertrand_by_text
+from src.scrapers.bertrand import BertrandScraper
 
 test_books = [
     ["Os Irmãos Karamázov", "Fiódor Dostoiévski"],
@@ -17,8 +17,9 @@ test_books = [
 
 print("SCRAPING TEST")
 
+scraper = BertrandScraper()
 for title, author in test_books:
-    res = search_bertrand_by_text(title, author)
+    res = scraper.search_by_text(title, author)
     
     if res:
         for edition in res:
