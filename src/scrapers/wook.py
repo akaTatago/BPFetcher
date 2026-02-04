@@ -1,4 +1,4 @@
-from src.utils.scraping_helper import get_soup, clean_text, clean_price
+from src.utils.scraping_helper import get_soup, clean_text, normalize, clean_price
 import urllib.parse
 
 def scrape_wook(isbn):
@@ -65,7 +65,6 @@ def scrape_wook(isbn):
 def search_wook_by_text(title, author):
 
     search_url = f"https://www.wook.pt/pesquisa?keyword={urllib.parse.quote(title.lower().replace(' ', '+'))}"
-    print(f"searching {search_url}")
 
     soup, response_link = get_soup(search_url)
     if not soup: return []
@@ -81,7 +80,7 @@ def search_wook_by_text(title, author):
 
     unmatches=0
     for prod in products:
-        if unmatches == 5:
+        if unmatches == 10:
             break
 
         title_area=prod.find("div", class_="title")
@@ -95,8 +94,8 @@ def search_wook_by_text(title, author):
         found_title = clean_text(title_elem)
         found_author = clean_text(author_elem) if author_elem else ""
 
-        if ((title.lower().strip() in found_title.lower() or found_title.lower() in title.lower().strip())  and 
-            author.lower().strip() in found_author.lower()):
+        if ((normalize(title) in normalize(found_title) or normalize(found_title) in normalize(title)) and 
+            (normalize(author) in normalize(found_author)) or (normalize(found_author) in normalize(author))):
             
             price_area=prod.find("span", class_="pvp")
             

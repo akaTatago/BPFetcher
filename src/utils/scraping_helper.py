@@ -17,6 +17,10 @@ def clean_text(element):
         return element.get_text(separator=" ", strip=True)
     return None
 
+def normalize(text):
+    if text:
+        return text.replace(':', '').strip().lower()
+
 def clean_price(element_or_text):
     if not element_or_text:
         return 0.0
