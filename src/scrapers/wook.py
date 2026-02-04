@@ -11,11 +11,10 @@ class WookScraper(BaseScraper):
         if "https://" in isbn:
             url = isbn
         else:
-            url = f"{self.base_url}/pesquisa?keyword={isbn}"
+            url = f"{self.base_url}/pesquisa?keyword={isbn}++"
 
         soup, final_url = get_soup(url)
-        if not soup or not soup.find("div", id="right d-flex flex-column"):
-            print(soup)
+        if not soup or not soup.find("div", class_="right d-flex flex-column"):
             return None
 
         info = soup.find("div", class_="right d-flex flex-column")
@@ -78,13 +77,17 @@ class WookScraper(BaseScraper):
             if self._validate_match(title, author, f_title, f_author):
                 price_tag = prod.find("span", class_="pvp")
                 price = clean_price(price_tag.find("span", class_="font-bold")) if price_tag else 0.0
+
+                on_sale = False
+                if price_tag:
+                    on_sale = bool(price_tag.find("s", class_="text-red"))
                 
                 results.append({
                     "Store": self.store_name,
                     "title_found": f_title,
                     "author_found": f_author,
                     "price": price,
-                    "on_sale": bool(price_tag.find("s", class_="text-red")),
+                    "on_sale": on_sale,
                     "status": "Available" if price > 0 else "Unavailable",
                     "link": self.base_url + title_area.find("a")['href']
                 })
