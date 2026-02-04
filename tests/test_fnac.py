@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.scrapers.fnac import scrape_fnac
+from src.scrapers.fnac import FnacScraper
 
 test_books = [
     "9789897731129",
@@ -17,8 +17,9 @@ test_books = [
 
 print("SCRAPING TEST")
 
+scraper = FnacScraper()
 for book in test_books:
-    res = scrape_fnac(book)
+    res = scraper.scrape_by_isbn(book)
     
     if res:
         print(f"STATUS: {res['status']}")
