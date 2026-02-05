@@ -29,7 +29,7 @@ class BertrandScraper(BaseScraper):
             "author_found": clean_text(author_tag),
             "price": price,
             "on_sale": bool(prod.find("span", class_="old-price")),
-            "status": bool(prod.find("div", class_="unavailable")),
+            "status": "Unavailable" if prod.find("div", class_="unavailable") else "Available",
             "link": self.base_url + title_tag["href"]
         }
 
@@ -56,8 +56,8 @@ class BertrandScraper(BaseScraper):
 
             f_title = clean_text(title_tag)
             f_author = ""
-            for author in author_tag:
-                f_author += f" {clean_text(author)}"
+            for author_ in author_tag:
+                f_author += f" {clean_text(author_)}"
 
             if self._validate_match(title, author, f_title, f_author):
                 price = clean_price(prod.find("span", class_="active-price"))
