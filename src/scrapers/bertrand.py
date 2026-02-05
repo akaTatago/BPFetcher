@@ -56,8 +56,8 @@ class BertrandScraper(BaseScraper):
 
             f_title = clean_text(title_tag)
             f_author = ""
-            for author_tag in author_tag:
-                f_author += f" {clean_text(author_tag)}"
+            for author in author_tag:
+                f_author += f" {clean_text(author)}"
 
             if self._validate_match(title, author, f_title, f_author):
                 price = clean_price(prod.find("span", class_="active-price"))

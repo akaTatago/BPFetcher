@@ -22,5 +22,5 @@ class BaseScraper(ABC):
             return False
         
         title_match = n_title in f_title or f_title in n_title
-        author_match = n_author in f_author or f_author in n_author
+        author_match = all(name in n_author for name in f_author) or all(name in f_author for name in n_author)
         return title_match and author_match

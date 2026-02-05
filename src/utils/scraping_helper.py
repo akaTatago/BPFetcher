@@ -1,5 +1,6 @@
 from curl_cffi import requests
 from bs4 import BeautifulSoup
+from unidecode import unidecode
 import time
 import random
 
@@ -25,7 +26,7 @@ def normalize(text):
         if text.rfind(' -') != -1:
             text=text[:text.rfind(' -')]
 
-        return text.replace(':', '').strip().lower()
+        return unidecode(text.replace(':', '').strip().lower())
 
 def clean_price(element_or_text):
     if not element_or_text:
