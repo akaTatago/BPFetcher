@@ -1,6 +1,6 @@
 import urllib.parse
 from .base_scraper import BaseScraper
-from src.utils.scraping_helper import get_soup, clean_text, clean_price, normalize
+from src.utils.scraping_helper import get_soup, clean_text, clean_price, normalize, normalize_isbn
 
 class FnacScraper(BaseScraper):
 
@@ -48,6 +48,7 @@ class FnacScraper(BaseScraper):
         }
     
     def scrape_by_isbn(self, isbn):
+        isbn=normalize_isbn(isbn)
         url = f"{self.base_url}/SearchResult/ResultList.aspx?Search={isbn}&sft=1&sa=0"
         soup, _ = get_soup(url)
         if not soup: return None

@@ -1,7 +1,7 @@
 import urllib.parse
 import re
 from .base_scraper import BaseScraper
-from src.utils.scraping_helper import get_soup, clean_text, clean_price
+from src.utils.scraping_helper import get_soup, clean_text, clean_price, normalize_isbn
 
 class WookScraper(BaseScraper):
     def __init__(self):
@@ -11,6 +11,7 @@ class WookScraper(BaseScraper):
         if "https://" in isbn:
             url = isbn
         else:
+            isbn=normalize_isbn(isbn)
             url = f"{self.base_url}/pesquisa?keyword={isbn}++"
 
         soup, final_url = get_soup(url)

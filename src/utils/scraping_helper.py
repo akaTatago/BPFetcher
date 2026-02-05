@@ -17,6 +17,9 @@ def clean_text(element):
         return element.get_text(separator=" ", strip=True)
     return None
 
+def normalize_isbn(isbn):
+    return isbn.replace('-', '').strip()
+
 def normalize(text):
     if text:
         if text.rfind(' -') != -1:
