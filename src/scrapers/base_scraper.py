@@ -14,6 +14,9 @@ class BaseScraper(ABC):
     def scrape_by_isbn(self, isbn):
         pass
 
+    def close(self):
+        pass
+
     def _validate_match(self, search_title, search_author, found_title, found_author):
         n_title, n_author = normalize(search_title), normalize(search_author)
         f_title, f_author = normalize(found_title), normalize(found_author)
