@@ -1,5 +1,6 @@
 from curl_cffi import requests
 from bs4 import BeautifulSoup
+from unidecode import unidecode
 import time
 import random
 
@@ -16,6 +17,16 @@ def clean_text(element):
     if element:
         return element.get_text(separator=" ", strip=True)
     return None
+
+def normalize_isbn(isbn):
+    return isbn.replace('-', '').strip()
+
+def normalize(text):
+    if text:
+        if text.rfind(' -') != -1:
+            text=text[:text.rfind(' -')]
+
+        return unidecode(text.replace(':', '').strip().lower())
 
 def clean_price(element_or_text):
     if not element_or_text:

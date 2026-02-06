@@ -1,59 +1,98 @@
-from src.utils.scraping_helper import get_soup, clean_text, clean_price
+import urllib.parse
+import re
+from .base_scraper import BaseScraper
+from src.utils.scraping_helper import get_soup, clean_text, clean_price, normalize_isbn
 
-def scrape_wook(isbn):
-    search_url = f"https://www.wook.pt/pesquisa?keyword={isbn}"
+class WookScraper(BaseScraper):
+    def __init__(self):
+        super().__init__("Wook", "https://www.wook.pt")
 
-    soup, final_url = get_soup(search_url)
-
-    if not soup:
-        return None
-
-    info=soup.find("div", class_="right d-flex flex-column")
-
-    if not info:
-        return None
-    
-    #TITLE
-    found_title=clean_text(info.find("span", class_="title"))
-
-    #AUTHOR
-    found_author=clean_text(info.find("span", class_="authors").find("a"))
-
-    #PRICE AND STATUS
-    price_area=info.find("div", class_="wook-container d-flex flex-column gap-20")
-    available=price_area.find("div", id="product-price")
-    if not available:
-        status="Unavailable"
-        price_clean=0.00
-        on_sale=False
-    else:
-        status="Available"
-        price=price_area.find("span", class_="price text-black text-align-right").text
-        price_clean = clean_price(price)
-        
-        off_sale_price=price_area.find("s", class_="text-red text-align-right")
-        if off_sale_price:
-            on_sale=True
+    def scrape_by_isbn(self, isbn):
+        if "https://" in isbn:
+            url = isbn
         else:
-            on_sale=False
+            isbn=normalize_isbn(isbn)
+            url = f"{self.base_url}/pesquisa?keyword={isbn}++"
 
-    #LINK
-    full_link = final_url
+        soup, final_url = get_soup(url)
+        if not soup or not soup.find("div", class_="right d-flex flex-column"):
+            return None
 
-    #PAGES
-    info_table=soup.find("table")
-    pages=0
-    if info_table:
-        table_rows = info_table.find_all("tr")
-        if len(table_rows) >= 8 and "Páginas:"==table_rows[7].find("td").text:
-            pages=int(table_rows[7].find("td", class_="font-medium").text)
+        info = soup.find("div", class_="right d-flex flex-column")
+        price_tag = info.find("span", class_="price text-black text-align-right")
+        price = clean_price(price_tag)
 
-    return {
-        "title_found": found_title,
-        "author_found": found_author,
-        "pages":pages,
-        "price": price_clean,
-        "on_sale": on_sale,
-        "status":status,
-        "link": full_link
-    }
+        pages = 0
+        info_table = soup.find("table")
+        if info_table:
+            page_row = info_table.find("td", string=re.compile("Páginas"))
+            if page_row:
+                value_cell = page_row.find_next_sibling("td")
+                if value_cell:
+                    try:
+                        pages = int(clean_text(value_cell))
+                    except:
+                        pass
+        
+        return {
+            "store": self.store_name,
+            "title_found": clean_text(info.find("span", class_="title")),
+            "author_found": clean_text(info.find("span", class_="authors").find("a")),
+            "price": price,
+            "pages": pages,
+            "on_sale": bool(soup.find("s", class_="text-red text-align-right")),
+            "status": "Available" if price > 0 else "Unavailable",
+            "link": final_url
+        }
+    
+    def search_by_text(self, title, author):
+        query = urllib.parse.quote(title.lower().replace(' ', '+'))
+        url = f"{self.base_url}/pesquisa?keyword={query}"
+        soup, response_link = get_soup(url)
+        if not soup: return []
+
+        results = []
+        unmatches = 0
+
+        products = soup.find_all("li", class_="product d-flex")
+        if not products:
+            match = self.scrape_by_isbn(response_link)
+            if match:
+                results.append(match)
+            return results
+
+        for prod in products:
+            if unmatches >= 10:
+                break
+
+            title_area = prod.find("div", class_="title")
+            title_tag = title_area.find("span", class_="font-bold") if title_area else None
+            author_tag = prod.find("div", class_="authors").find("a") if prod.find("div", class_="authors") else None
+            
+            if not title_tag or not author_tag: 
+                unmatches += 1
+                continue
+            
+            f_title, f_author = clean_text(title_tag), clean_text(author_tag)
+            
+            if self._validate_match(title, author, f_title, f_author):
+                price_tag = prod.find("span", class_="pvp")
+                price = clean_price(price_tag.find("span", class_="font-bold")) if price_tag else 0.0
+
+                on_sale = False
+                if price_tag:
+                    on_sale = bool(price_tag.find("s", class_="text-red"))
+                
+                results.append({
+                    "Store": self.store_name,
+                    "title_found": f_title,
+                    "author_found": f_author,
+                    "price": price,
+                    "on_sale": on_sale,
+                    "status": "Available" if price > 0 else "Unavailable",
+                    "link": self.base_url + title_area.find("a")['href']
+                })
+            else:
+                unmatches += 1
+
+        return results

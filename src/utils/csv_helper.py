@@ -3,26 +3,43 @@ import os
 import sys
 
 
-def load_books(file_path):
+def load_books(file_path, mode='isbn'):
     if not os.path.exists(file_path):
         print(f"Error: {file_path} not found.")
         return []
 
     try:
         df = pd.read_csv(file_path, dtype=str)
-        
-        if 'ISBN13' in df.columns:
-            col_name = 'ISBN13'
-        else:
-            print(f"ISBN13 column not found in {file_path}")
-            return []
-        
-        df[col_name] = df[col_name].fillna('').astype(str)
-        df['Identifier'] = df[col_name].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
+        df.columns = df.columns.str.strip()
 
-        books_list = df.to_dict('records')
+        books_list = []
         
-        books_list = [b for b in books_list if b.get('Identifier')]
+        if mode == 'isbn':
+            isbn_col = next((col for col in df.columns if 'isbn13' in col.lower()), None)
+            
+            if not isbn_col:
+                print(f"Error: No column with 'ISBN' found in {file_path}")
+                return []
+            
+            df['Identifier'] = df[isbn_col].fillna('').astype(str)
+            df['Identifier'] = df['Identifier'].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
+            
+            books_list = df.to_dict('records')
+            books_list = [b for b in books_list if b.get('Identifier')]
+
+        elif mode == 'text':
+            title_col = next((col for col in df.columns if col.lower() == 'title' or col.lower() == 'titulo'), None)
+            author_col = next((col for col in df.columns if col.lower() == 'author' or col.lower() == 'autor'), None)
+
+            if not title_col or not author_col:
+                print(f"Error: Columns 'Title' and 'Author' required for text mode not found in {file_path}")
+                return []
+            
+            df = df.dropna(subset=[title_col, author_col])
+            
+            df = df.rename(columns={title_col: 'Title', author_col: 'Author'})
+            
+            books_list = df.to_dict('records')
 
         return books_list
 

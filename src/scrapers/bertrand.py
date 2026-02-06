@@ -1,50 +1,77 @@
-from src.utils.scraping_helper import get_soup, clean_text, clean_price
-import re
+import re, urllib.parse
+from .base_scraper import BaseScraper
+from src.utils.scraping_helper import get_soup, clean_text, clean_price, normalize_isbn
 
-def scrape_bertrand(isbn):
-    search_url = f"https://www.bertrand.pt/pesquisa/{isbn}"
+class BertrandScraper(BaseScraper):
+    def __init__(self):
+        super().__init__("Bertrand", "https://www.bertrand.pt")
 
-    soup, final_url = get_soup(search_url)
+    def scrape_by_isbn(self, isbn):
+        isbn=normalize_isbn(isbn)
+        url = f"{self.base_url}/pesquisa/{isbn}"
+        soup, final_url = get_soup(url)
+        if not soup: return None
+        prod = soup.find("div", class_="product-info")
+        if not prod: return None
+        
+        #TITLE
+        title_tag = prod.find("a", class_="title-lnk track")
 
-    if not soup:
-        return None
+        #AUTHOR
+        author_tag = prod.find("div", class_=re.compile(r"authors portlet-product-author-\d+")).find("a")
 
-    info=soup.find("div", class_="product-info")
+        #PRICE
+        price = clean_price(prod.find("span", class_="active-price"))
 
-    if not info:
-        return None
-    
-    #TITLE
-    title_tag=info.find("a", class_="title-lnk track")
-    found_title=clean_text(title_tag)
+        return {
+            "store": self.store_name,
+            "title_found": clean_text(title_tag),
+            "author_found": clean_text(author_tag),
+            "price": price,
+            "on_sale": bool(prod.find("span", class_="old-price")),
+            "status": "Unavailable" if prod.find("div", class_="unavailable") else "Available",
+            "link": self.base_url + title_tag["href"]
+        }
 
-    #AUTHOR
-    found_author=clean_text(info.find("div", class_=re.compile(r"authors portlet-product-author-\d+")).find("a"))
+    def search_by_text(self, title, author):
+        query = urllib.parse.quote(title.lower().replace(' ', '+'))
+        url = f"{self.base_url}/pesquisa/{query}"
+        soup, _ = get_soup(url)
+        if not soup: return []
 
-    #PRICE AND STATUS
-    price_clean=clean_price(info.find("span", class_="active-price"))
+        results = []
+        unmatches = 0
+        products = soup.find_all("div", class_="product-info")
 
-    unavailable=info.find("div", class_="unavailable")
+        for prod in products:
+            if unmatches>=10:
+                break
 
-    if unavailable:
-        status="Unavailable"
-        on_sale=False
-    else:
-        status="Available"
-        off_sale_price=info.find("span", class_="old-price")
-        if off_sale_price:
-            on_sale=True
-        else:
-            on_sale=False
+            title_tag = prod.find("a", class_="title-lnk track")
+            author_tag=prod.find("div", class_=re.compile(r"authors portlet-product-author-\d+")).find_all("a")
 
-    #LINK
-    full_link = "https://www.bertrand.pt"+title_tag["href"]
+            if not title_tag or not author_tag: 
+                unmatches += 1
+                continue
 
-    return {
-        "title_found": found_title,
-        "author_found": found_author,
-        "price": price_clean,
-        "on_sale": on_sale,
-        "status":status,
-        "link": full_link
-    }
+            f_title = clean_text(title_tag)
+            f_author = ""
+            for author_ in author_tag:
+                f_author += f" {clean_text(author_)}"
+
+            if self._validate_match(title, author, f_title, f_author):
+                price = clean_price(prod.find("span", class_="active-price"))
+
+                results.append({
+                    "store": self.store_name,
+                    "title_found": f_title,
+                    "author_found": f_author.strip(),
+                    "price": price,
+                    "on_sale": bool(prod.find("span", class_="old-price")),
+                    "status": "Unavailable" if prod.find("div", class_="unavailable") else "Available",
+                    "link": self.base_url + title_tag["href"]
+                })
+            else:
+                unmatches += 1
+
+        return results

@@ -2,8 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.scrapers.wook import WookScraper
-
+from src.scrapers.almedina import AlmedinaScraper
 test_books = [
     "9789897731129",
     "978-972-0-04683-3",
@@ -17,7 +16,7 @@ test_books = [
 
 print("SCRAPING TEST")
 
-scraper = WookScraper()
+scraper = AlmedinaScraper()
 for book in test_books:
     res = scraper.scrape_by_isbn(book)
     
