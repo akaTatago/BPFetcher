@@ -10,26 +10,35 @@ def load_books(file_path, mode='isbn'):
 
     try:
         df = pd.read_csv(file_path, dtype=str)
+        df.columns = df.columns.str.strip()
 
         books_list = []
         
         if mode == 'isbn':
-            if 'ISBN13' not in df.columns:
-                print(f"ISBN13 column not found in {file_path}")
+            isbn_col = next((col for col in df.columns if 'isbn13' in col.lower()), None)
+            
+            if not isbn_col:
+                print(f"Error: No column with 'ISBN' found in {file_path}")
                 return []
             
-            df['ISBN13'] = df['ISBN13'].fillna('').astype(str)
-            df['Identifier'] = df['ISBN13'].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
+            df['Identifier'] = df[isbn_col].fillna('').astype(str)
+            df['Identifier'] = df['Identifier'].str.replace('=', '').str.replace('"', '').str.replace('-', '').str.strip()
+            
             books_list = df.to_dict('records')
             books_list = [b for b in books_list if b.get('Identifier')]
 
         elif mode == 'text':
-            required = ['Title', 'Author']
-            if not all(col in df.columns for col in required):
-                print(f"Columns 'Title' and 'Author' not found in {file_path}")
+            title_col = next((col for col in df.columns if col.lower() == 'title' or col.lower() == 'titulo'), None)
+            author_col = next((col for col in df.columns if col.lower() == 'author' or col.lower() == 'autor'), None)
+
+            if not title_col or not author_col:
+                print(f"Error: Columns 'Title' and 'Author' required for text mode not found in {file_path}")
                 return []
             
-            df = df.dropna(subset=['Title', 'Author'])
+            df = df.dropna(subset=[title_col, author_col])
+            
+            df = df.rename(columns={title_col: 'Title', author_col: 'Author'})
+            
             books_list = df.to_dict('records')
 
         return books_list
