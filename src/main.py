@@ -1,6 +1,7 @@
 import time
 import random
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
 
@@ -32,14 +33,15 @@ def main():
     console.print("\n[bold dodger_blue1]--- BPFetcher CLI ---[/bold dodger_blue1]")
 
     with console.status("[bold dodger_blue1]Reading CSV file...[/bold dodger_blue1]", spinner="dots"):
-        books = load_books(args.input_file)
+        books = load_books(args.input_file, mode=args.mode)
         time.sleep(0.5)
 
     if not books:
         console.print("[bold red]Empty input file or missing required columns.[/bold red]")
         return
 
-    active_scrapers = []
+    fast_scrapers = []
+    browser_scrapers = []
 
     SCRAPER_CLASSES = {
         "wook": WookScraper,
@@ -53,14 +55,19 @@ def main():
     for s in target_stores:
         if s in SCRAPER_CLASSES:
             try:
-                scraper_instance = SCRAPER_CLASSES[s]() 
-                active_scrapers.append(scraper_instance)
+                instance = SCRAPER_CLASSES[s]()
+                if s == "fnac":
+                    browser_scrapers.append(instance)
+                else:
+                    fast_scrapers.append(instance)
             except Exception as e:
                 console.print(f"[red]Failed to init {s}: {e}[/red]")
 
-    names = [s.store_name for s in active_scrapers]
+    all_active_scrapers = fast_scrapers + browser_scrapers
+    names = [s.store_name for s in all_active_scrapers]
+
     console.print(f"Mode: [yellow]{args.mode.upper()}[/yellow]")
-    console.print(f"Bookshops scraped: [dodger_blue1]{', '.join(names)}[/dodger_blue1]")
+    console.print(f"Bookstores scraped: [dodger_blue1]{', '.join(names)}[/dodger_blue1]")
     
     results = []
 
@@ -75,86 +82,116 @@ def main():
             
             task = progress.add_task("[dodger_blue1]Starting...", total=len(books))
 
-            for book in books:
-                progress.update(task)
+            max_threads = len(fast_scrapers) if len(fast_scrapers) > 0 else 1
 
-                if args.mode == 'text':
-                    title = book.get("Title", "")
-                    author = book.get("Author", "")
+            with ThreadPoolExecutor(max_workers=max_threads) as executor:
+
+                for book in books:
+                    progress.update(task)
                     
-                    matches_found = False
+                    book_results = [] 
+                    
+                    future_to_scraper = {}
+                    
+                    if args.mode == 'text':
+                        title = book.get("Title", "")
+                        author = book.get("Author", "")
+                        if title and author:
+                            for scraper in fast_scrapers:
+                                future = executor.submit(scraper.search_by_text, title, author)
+                                future_to_scraper[future] = scraper
+                    else:
+                        identifier = book.get("Identifier")
+                        if identifier:
+                            for scraper in fast_scrapers:
+                                future = executor.submit(scraper.scrape_by_isbn, identifier)
+                                future_to_scraper[future] = scraper
 
-                    if title and author:
-                        for scraper in active_scrapers:
-                            try:
-                                found_items = scraper.search_by_text(title, author)
-                                
-                                for item in found_items:
-                                    row = book.copy()
-                                    
-                                    row['Store'] = scraper.store_name
-                                    row['Title Found'] = item.get('title_found')
-                                    row['Author Found'] = item.get('author_found')
-                                    row['Status'] = item.get('status', 'Unavailable')
-                                    row['Price'] = item.get('price', 0.0)
-                                    row['On Sale'] = "Yes" if item.get('on_sale') else "No"
-                                    row['Link'] = item.get('link', '')
-                                    
-                                    results.append(row)
-                                    matches_found = True
-
-                            except Exception as e:
-                                console.print(f"Error in {scraper.store_name}: {e}")
-                                pass
-
-                else:
-                    final_record = book.copy()
-                    final_record.pop('Identifier', None) 
-                    final_record.setdefault("Pages", 0)
-
-                    identifier = book.get("Identifier")
-
-                    if identifier:
-                        for scraper in active_scrapers:
-                            store_name = scraper.store_name
-                            data = None
-                            try:
-                                data = scraper.scrape_by_isbn(identifier)
-                            except Exception:
-                                data = None
-
+                    for future in as_completed(future_to_scraper):
+                        scraper = future_to_scraper[future]
+                        try:
+                            data = future.result()
                             if data:
-                                final_record["Title Match"] = data.get("title_found", "")
-                                
-                                if "pages" in data and data["pages"] > 0:
-                                    final_record["Pages"] = data["pages"]
+                                if isinstance(data, list):
+                                    book_results.extend(data)
+                                else:
+                                    book_results.append(data)
+                        except Exception as e:
+                            pass
 
-                                final_record[f"{store_name} Status"] = data.get("status", "Available")
-                                final_record[f"{store_name} Price"] = data.get("price", 0.0)
-                                final_record[f"{store_name} On Sale"] = "Yes" if data.get("on_sale") else "No"
-                                final_record[f"{store_name} Link"] = data.get("link", "")
+                    for scraper in browser_scrapers:
+                        try:
+                            data = None
+                            if args.mode == 'text':
+                                title = book.get("Title", "")
+                                author = book.get("Author", "")
+                                if title and author:
+                                    data = scraper.search_by_text(title, author)
                             else:
-                                final_record[f"{store_name} Status"] = "Not found"
-                                final_record[f"{store_name} Price"] = 0.0
-                                final_record[f"{store_name} On Sale"] = "No"
-                                final_record[f"{store_name} Link"] = ""
+                                identifier = book.get("Identifier")
+                                if identifier:
+                                    data = scraper.scrape_by_isbn(identifier)
+                            
+                            if data:
+                                if isinstance(data, list):
+                                    book_results.extend(data)
+                                else:
+                                    book_results.append(data)
+                        except Exception:
+                            pass
+
                     
-                    results.append(final_record)
-                
-                # Delay aleatório
-                time.sleep(random.uniform(1.5, 3.5))
-                progress.advance(task)
+                    if args.mode == 'text':
+                        if book_results:
+                            for item in book_results:
+                                row = book.copy()
+                                row['Store'] = item.get('store')
+                                row['Title Found'] = item.get('title_found')
+                                row['Author Found'] = item.get('author_found')
+                                row['Status'] = item.get('status', 'Unavailable')
+                                row['Price'] = item.get('price', 0.0)
+                                row['On Sale'] = "Yes" if item.get('on_sale') else "No"
+                                row['Link'] = item.get('link', '')
+                                results.append(row)
+                    
+                    else:
+                        final_record = book.copy()
+                        final_record.pop('Identifier', None)
+                        final_record.setdefault("Pages", 0)
+
+                        for s in all_active_scrapers:
+                            final_record[f"{s.store_name} Status"] = "Not found"
+                            final_record[f"{s.store_name} Price"] = 0.0
+                            final_record[f"{s.store_name} On Sale"] = "No"
+                            final_record[f"{s.store_name} Link"] = ""
+
+                        for data in book_results:
+                            store = data.get('store')
+                            final_record["Title Match"] = data.get("title_found", "")
+                            if "pages" in data and data["pages"] > 0:
+                                final_record["Pages"] = data["pages"]
+
+                            final_record[f"{store} Status"] = data.get("status", "Available")
+                            final_record[f"{store} Price"] = data.get("price", 0.0)
+                            final_record[f"{store} On Sale"] = "Yes" if data.get("on_sale") else "No"
+                            final_record[f"{store} Link"] = data.get("link", "")
+
+                        results.append(final_record)
+
+                    progress.advance(task)
+                    
+                    #time.sleep(0.1)
 
         if save_results(results, args.output):
             console.print(f"\n[dodger_blue1]Done![/dodger_blue1] Output saved in: [underline]{args.output}[/underline]")
         else:
             console.print("\n[bold red]Saving output file error.[/bold red]")
-        
+
     except KeyboardInterrupt:
         console.print("\n[bold red]Process interrupted by user.[/bold red]")
     
     finally:
-        for scraper in active_scrapers:
+        for scraper in all_active_scrapers:
             if hasattr(scraper, 'close'):
                 scraper.close()
 
