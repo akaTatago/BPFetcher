@@ -84,7 +84,7 @@ class WookScraper(BaseScraper):
                     on_sale = bool(price_tag.find("s", class_="text-red"))
                 
                 results.append({
-                    "Store": self.store_name,
+                    "store": self.store_name,
                     "title_found": f_title,
                     "author_found": f_author,
                     "price": price,
