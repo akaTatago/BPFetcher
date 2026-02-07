@@ -30,7 +30,7 @@ def main():
     
     args = parser.parse_args()
 
-    console.print("\n[bold dodger_blue1]--- BPFetcher CLI ---[/bold dodger_blue1]")
+    console.print("\n[bold yellow]--- BPFetcher CLI ---[/bold yellow]")
 
     with console.status("[bold dodger_blue1]Reading CSV file...[/bold dodger_blue1]", spinner="dots"):
         books = load_books(args.input_file, mode=args.mode)
@@ -66,7 +66,7 @@ def main():
     all_active_scrapers = fast_scrapers + browser_scrapers
     names = [s.store_name for s in all_active_scrapers]
 
-    console.print(f"Mode: [yellow]{args.mode.upper()}[/yellow]")
+    console.print(f"Mode: [dodger_blue1]{args.mode.upper()}[/dodger_blue1]")
     console.print(f"Bookstores scraped: [dodger_blue1]{', '.join(names)}[/dodger_blue1]")
     
     results = []
