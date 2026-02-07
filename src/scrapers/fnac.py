@@ -22,6 +22,10 @@ class FnacScraper(BaseScraper):
         self.context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
         self.page = self.context.new_page()
+
+        self.page.route("**/*", lambda route: route.abort() 
+                        if route.request.resource_type in ["image", "media", "font"] 
+                        else route.continue_())
         
         try:
             self.page.goto(self.base_url, timeout=30000, wait_until="domcontentloaded")
