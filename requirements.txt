@@ -3,5 +3,5 @@ lxml
 playwright
 curl-cffi
 pandas
-Unidecode
+unidecode
 rich
